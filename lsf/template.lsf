@@ -1,0 +1,8 @@
+#!/bin/sh
+#BSUB -J testname
+#BSUB -q biopnode02
+#BSUB -o %J.log -e %J.err
+#BSUB -n 1
+
+sleep 20
+seq 10
