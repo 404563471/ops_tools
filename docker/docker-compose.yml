@@ -1,0 +1,239 @@
+bm-mysql:
+    image: mysql:5.7
+    volumes: 
+      - ./bm0209.sql:/docker-entrypoint-initdb.d/bm0209.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456789qwebjjsjzx1022
+      - MYSQL_DATABASE=bm
+
+bm-tomcat:
+    image: tomcat:latest
+    expose:
+      - "8080"
+    volumes:
+      - ./biomedical:/usr/local/tomcat/webapps/ROOT:rw
+    environment:
+      - VIRTUAL_HOST=biomedical.biocloud.org.cn  
+    links:
+      - bm-mysql:biomedical-mysql
+# web server
+baiyi-nginx:
+  image: nginx:latest
+  expose: 
+    - "80"
+  volumes:
+    # app
+    - ./baiyi:/usr/share/nginx/html:rw
+    # nginx configs
+    - ./baiyi-lnmp/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./baiyi-lnmp/nginx/conf.d/:/etc/nginx/conf.d/:ro
+  links:
+    - baiyi-fpm:DOCKER_PHP_FPM
+    - baiyi-jbrowse:baiyi-jbrowse
+  environment:
+    - VIRTUAL_HOST=baiyi.biocloud.org.cn
+
+# php-fpm
+baiyi-fpm:
+#  build: ./php-fpm
+  image: php:fpm-baiyi-R-latest
+  volumes:
+    - ./baiyi:/usr/share/nginx/html:rw
+    - ./biosoft:/biosoft:rw
+    - ./baiyi-lnmp/php-fpm/php.ini-production:/usr/local/etc/php/php.ini:ro
+  links:
+    - baiyi-mysql:baiyi-mysql
+    - baiyi-jbrowse:baiyi-jbrowse
+
+# database
+baiyi-mysql:
+  image: mysql:5.5
+  volumes:
+    - ./bj_baiyi.sql:/docker-entrypoint-initdb.d/bj_baiyi.sql
+  environment:
+    - MYSQL_ROOT_PASSWORD=123456789qwebaiyi12345
+    - MYSQL_DATABASE=bj_baiyi
+
+# jbrowse
+baiyi-jbrowse:
+  image: jbrowse/gmod-jbrowse:latest
+  volumes:
+    - ./biosoft/jbrowse/jbrowse-data:/jbrowse/jbrowse-data
+
+###########################################################
+db:
+  image: db:2.0
+  volumes:
+   - ./fishDB.sql:/docker-entrypoint-initdb.d/fishDB.sql
+  environment:
+   - MYSQL_ROOT_PASSWORD=123456789qwe123456 
+   - MYSQL_DATABASE=fishDB 
+
+#php-apache
+phptest:
+  image: php:hsd
+  expose: 
+   - "80" 
+  environment:
+   - VIRTUAL_HOST=rd.biocloud.org.cn
+  volumes:
+   - ./hsd/rd:/var/www/html
+   - ./hsd/rd/fish-v4:/var/www/html/fish-v4
+  links:
+   - db:aliasdb
+
+mpf-mysql:
+  image: mysql:5.7
+  volumes:
+   - ./mpf.sql:/docker-entrypoint-initdb.d/mpf.sql
+  environment:
+   - MYSQL_ROOT_PASSWORD=123456789qwebcc123456 
+   - MYSQL_DATABASE=mpf 
+   - MYSQL_USER=guixk 
+   - MYSQL_PASSWORD=bcc123456  
+
+#php-apache
+mpf-php:
+  image: php:5.6-apache-peibo
+  expose: 
+   - "80" 
+  volumes:
+   - ./mpf:/var/www/html
+  environment:
+   - VIRTUAL_HOST=ps.biocloud.org.cn
+  links:
+   - mpf-mysql:mpf-mysql 
+  command: bash -c "cp /var/www/html/localhost.conf /etc/apache2/sites-enabled  && a2enmod cgid && a2enmod rewrite && a2dissite 000-default && apache2-foreground"
+
+mpf1-php:
+  image: php:5.6-apache-peibo
+#  ports:
+#   - "5002:80"
+  expose: 
+   - "80" 
+  volumes:
+   - ./mpf2:/var/www/html
+  environment:
+   - VIRTUAL_HOST=ps1.biocloud.org.cn
+  links:
+   - mpf-mysql:mpf-mysql 
+  command: bash -c "cp /var/www/html/localhost.conf /etc/apache2/sites-enabled  && a2enmod cgid && a2enmod rewrite && a2dissite 000-default && apache2-foreground"
+# web server
+shanshu-nginx:
+  image: nginx:latest
+#  ports:
+#    - "4001:80"
+#    - "4002:443"
+  expose: 
+    - "80"
+  volumes:
+    # app
+    - ./shanshu:/usr/share/nginx/html:rw
+    # nginx configs
+    - ./shanshu-lnmp/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./shanshu-lnmp/nginx/conf.d/:/etc/nginx/conf.d/:ro
+  links:
+    - shanshu-fpm:DOCKER_PHP_FPM
+    - shanshu-jbrowse:shanshu-jbrowse
+  environment:
+    - VIRTUAL_HOST=www.piceadb.com
+
+# php-fpm
+shanshu-fpm:
+#  build: ./php-fpm
+  image: php:fpm-shanshu-R-latest
+  volumes:
+    - ./shanshu:/usr/share/nginx/html:rw
+    - ./biosoft:/biosoft:rw
+    # Your php.ini
+    - ./shanshu-lnmp/php-fpm/php.ini-production:/usr/local/etc/php/php.ini:ro
+  links:
+    - shanshu-mysql:shanshu-mysql
+    - shanshu-jbrowse:shanshu-jbrowse
+
+# database
+shanshu-mysql:
+  image: mysql:5.7
+  volumes:
+    - ./bj_shanshu.sql:/docker-entrypoint-initdb.d/bj_shanshu.sql
+  environment:
+    - MYSQL_ROOT_PASSWORD=123456789qweshanshu12345
+    - MYSQL_DATABASE=bj_shanshu
+#  networks:
+#    - shanshu_bridge
+
+# jbrowse
+shanshu-jbrowse:
+  image: jbrowse/gmod-jbrowse:latest
+  volumes:
+    - ./biosoft:/biosoft:rw
+    - ./jbrowse:/jbrowse/pabies
+#  networks:
+#    - shanshu_bridge
+
+#networks:
+#  shanshu_bridge:
+#    external: 
+#      name: bridge
+#    driver: bridge
+#    ipam:
+#      driver: default
+#      config:
+#      -
+#        subnet: 172.17.0.0/16
+#      -
+#        gateway: 172.17.0.1
+bioclass2019:
+  image: httpd
+  expose:
+    - 80
+  volumes:
+    - ./bioclass2019:/usr/local/apache2/htdocs
+  environment:
+    - VIRTUAL_HOST=bioinformatics.bcc.ac.cn
+
+biomeeting:
+  image: tomcat
+  expose:
+    - 8080
+  volumes:
+    - ./bioMeeting:/usr/local/tomcat/webapps/ROOT:rw
+  environment:
+    - VIRTUAL_HOST=nccbb.bcc.ac.cn
+  
+# web server
+yitiji-nginx:
+  image: nginx:latest
+  ports:
+     - "9010:80"
+#    - "4002:443"
+  volumes:
+    # app
+    - ./sw:/usr/share/nginx/html:rw
+    # nginx configs
+    - ./baiyi-lnmp/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./baiyi-lnmp/nginx/conf.d/:/etc/nginx/conf.d/:ro
+  links:
+    - yitiji-fpm:DOCKER_PHP_FPM
+
+# php-fpm
+yitiji-fpm:
+  image: php:fpm-yitiji-rnaseq
+  volumes:
+    - ./sw:/usr/share/nginx/html:rw
+    - ./biosoft:/opt/biosoft:rw
+    - ./biosoft/bio_bd:/opt/bio_bd:rw
+    - ./miniconda3:/root/miniconda3:rw
+      # Your php.ini
+    - ./baiyi-lnmp/php-fpm/php.ini-production:/usr/local/etc/php/php.ini:ro
+  links:
+    - mysql-yitijitest:mysql-yitijitest
+
+# database
+mysql-yitijitest:
+    image: mysql:5.7
+    volumes:
+    - ./bj_swxx.sql:/docker-entrypoint-initdb.d/bj_swxx.sql
+    environment:
+    - MYSQL_ROOT_PASSWORD=123456789qwenew_wen666**
+    - MYSQL_DATABASE=swxx
