@@ -73,3 +73,9 @@ if [ $answer == "y" ] || [ $answer == "Y" ]; then
    echo_green "back up docker to /var/lib/docker.bk"
 fi
 service docker start
+
+if [ $? -ne 0 ]; then
+	sed -i 's/overlay2/devicemapper/' /etc/sysconfig/docker-storage
+	service docker start
+	fi	
+	
